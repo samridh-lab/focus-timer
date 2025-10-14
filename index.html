@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>10:00 Focus Timer</title>
+<style>
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
+  .wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:#0b1220;color:#fff}
+  .timer{font-size:6vh;margin:8px}
+  .msg{font-size:2.2vh;opacity:0.9}
+  .overlay{position:fixed;inset:0;background:#071026;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999}
+  .btn{margin-top:18px;padding:12px 20px;border-radius:10px;border:none;font-size:16px}
+  .small{font-size:12px;opacity:0.8;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="wrap">
+    <div style="text-align:center">
+      <div class="timer" id="time">10:00</div>
+      <div class="msg">Focus session — do not pick up your phone</div>
+      <button class="btn" id="end" aria-label="End session (can't force stop)">End session</button>
+      <div class="small">This page cannot stop the home/switcher buttons — use an app for a true lock.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const D = 10*60; // seconds
+let t = D;
+const el = document.getElementById('time');
+const overlay = document.getElementById('overlay');
+const endBtn = document.getElementById('end');
+
+function fmt(s){
+  const m = Math.floor(s/60).toString().padStart(2,'0');
+  const sec = (s%60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function tick(){
+  t--;
+  el.textContent = fmt(t);
+  if(t<=0){
+    clearInterval(timer);
+    notify();
+    showDone();
+  }
+}
+
+function notify(){
+  if("Notification" in window && Notification.permission === "granted"){
+    new Notification("Focus session finished! 🎉");
+  }
+}
+
+function showDone(){
+  overlay.innerHTML = `<div class="wrap"><div style="text-align:center"><div class="timer">00:00</div><div class="msg">Done — good job!</div><button class="btn" onclick="location.reload()">Start again</button></div></div>`;
+}
+
+async function requestPerms(){
+  // Notification permission
+  if("Notification" in window && Notification.permission !== "granted"){
+    try{ await Notification.requestPermission(); }catch(e){}
+  }
+  // Try entering fullscreen (user gesture may be required by some browsers)
+  try{
+    if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+  }catch(e){}
+}
+
+// start immediately
+requestPerms();
+el.textContent = fmt(t);
+const timer = setInterval(tick, 1000);
+
+// make it awkward to leave: show a prompt if trying to close/back
+window.addEventListener('beforeunload', function(e){
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+// end button for user to exit
+endBtn.addEventListener('click', ()=>{
+  clearInterval(timer);
+  showDone();
+  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+  window.removeEventListener('beforeunload', ()=>{});
+});
+</script>
+</body>
+</html>
